@@ -1,0 +1,96 @@
+#vamos agora para conceitos mais tecnicos e complexos sobre agentes de IA e suas funções utilizaremos Python até o final dessa aula por praticidade e oque se é mais encontrado no mercado
+
+--------------------------------
+rode na primeira celula e apague o seguinte comando 
+!pip install -q -U langchain-google-genai langchain langgraph 
+!pip install -q -U langchain-google-genai langchain langchain-community 
+------------------------------------
+import os
+import random
+import string
+from datetime import datetime
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage
+
+# Lembre-se de colocar sua chave real aqui
+os.environ["GOOGLE_API_KEY"] = "COLE_SUA_CHAVE_AQUI"
+---------------------------------------
+Python
+
+@tool
+def obter_data_hora() -> str:
+    """Retorna a data e a hora atual do sistema. Use sempre que o usuário perguntar o dia, a hora ou o momento atual."""
+    agora = datetime.now()
+    return agora.strftime("%d/%m/%Y %H:%M:%S")
+
+@tool
+def gerar_senha_segura(tamanho: int) -> str:
+    """Gera uma senha forte e aleatória. Recebe o 'tamanho' da senha como um número inteiro."""
+    caracteres = string.ascii_letters + string.digits + "!@#$%&*"
+    senha = ''.join(random.choice(caracteres) for _ in range(tamanho))
+    return f"Senha gerada com sucesso: {senha}"
+
+minhas_ferramentas = [obter_data_hora, gerar_senha_segura]
+
+# Modelo focado (temperatura 0) para não inventar dados ao usar as ferramentas
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+
+# O LangGraph monta o agente com uma única linha!
+agente = create_react_agent(llm, tools=minhas_ferramentas) 
+-------------------------------------------------
+historico = []
+
+print("=========================================================")
+print("🛠️ Agente LangGraph com Ferramentas Iniciado!")
+print("Experimente: 'Que horas são?' ou 'Gere uma senha de 12 caracteres'")
+print("=========================================================\n")
+
+while True:
+    try:
+        pergunta = input("Você: ")
+        
+        if pergunta.strip().lower() == 'sair':
+            print("\n🤖 Agente: Encerrando...")
+            break
+        if not pergunta.strip(): continue
+
+        print("🤖 Agente processando...\n")
+        
+        # Adiciona a pergunta ao histórico
+        historico.append(HumanMessage(content=pergunta))
+        
+        # O agente invoca a IA
+        resultado = agente.invoke({"messages": historico})
+        historico = resultado["messages"]
+        
+        # ========================================================
+        # FILTRO DE TEXTO: Pega APENAS a resposta limpa da IA
+        # ========================================================
+        resposta_texto = ""
+        
+        # Lê o histórico de trás pra frente buscando a última fala da IA
+        for msg in reversed(historico):
+            if msg.type == "ai":
+                # Se for um texto limpo, pega ele
+                if isinstance(msg.content, str) and msg.content.strip():
+                    resposta_texto = msg.content
+                    break
+                # Se a biblioteca quebrou o texto em uma lista (comum em versões novas)
+                elif isinstance(msg.content, list):
+                    textos = [bloco["text"] for bloco in msg.content if isinstance(bloco, dict) and "text" in bloco]
+                    if textos:
+                        resposta_texto = "".join(textos)
+                        break
+
+        # Se a IA executou uma ferramenta mas não disse nada, colocamos um aviso
+        if not resposta_texto:
+            resposta_texto = "Ação concluída."
+            
+        print(f"{resposta_texto}\n")
+        print("-" * 57)
+
+    except Exception as e:
+        print(f"\n❌ [Erro]: {e}\n")
