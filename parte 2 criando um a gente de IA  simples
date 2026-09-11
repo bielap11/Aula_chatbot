@@ -1,0 +1,47 @@
+#vamos agora aprender agora a como fazer um AGENTE com ele 
+
+from google import genai 
+from google.genai import types
+# Importa a biblioteca google.generativeai 
+import google.generativeai as genai 
+-----------------------------------------
+minha_chave = "USE sua chave "
+
+# 2. Inicializa o cliente com a chave
+genai.configure(api_key=minha_chave)
+-------------------------------------------
+configuracao = types.GenerateContentConfig(
+    system_instruction="Você é um desenvolvedor sênior especialista em Python. Suas respostas devem ser diretas ao ponto e sempre incluir um pequeno exemplo de código prático.",
+    temperature=0.5 # Controla a criatividade (0.0 é mais técnico/focado, 1.0 é mais criativo)
+)
+-----------------------------------------------
+agente = client.chats.create(
+    model='gemini-3.5-flash',
+    config=configuracao
+)
+---------------------------------------------
+while True:
+    try:
+        # Captura o texto digitado pelo usuário
+        pergunta = input("Você: ")
+        
+        # Remove espaços extras e deixa tudo minúsculo para verificar a condição de saída
+        if pergunta.strip().lower() == 'sair':
+            print("\n🤖 Agente: Foi um prazer ajudar! Encerrando o chat...")
+            break
+            
+        # Ignora se o usuário apertar Enter sem digitar nada
+        if not pergunta.strip():
+            continue
+
+        # Envia a mensagem para a API
+        print("🤖 Agente digitando...\n")
+        resposta = agente.send_message(pergunta)
+        
+        # Exibe a resposta formatada
+        print(f"{resposta.text}\n")
+        print("-" * 57) # Linha separadora para organizar a leitura
+
+    # Tratamento de erro profissional para evitar que o código "quebre" feio
+    except Exception as e:
+        print(f"\n❌ [Erro]: Ocorreu um problema na comunicação com a API: {e}\n") 
